@@ -15,10 +15,10 @@ import {
   Zap,
 } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
+import { SiteFooter } from "@/components/SiteFooter"
 import {
   ARTEMIS_CTA_URL,
   BRAND_NAME,
-  CONTACT_EMAIL,
   LanguageCode,
   copy,
   getDirection,
@@ -353,29 +353,7 @@ export function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t border-slate-200 bg-white py-10">
-        <div className="shell flex flex-col gap-6 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="font-semibold text-slate-950">{BRAND_NAME}</p>
-            <a className="mt-2 block text-brand-700 hover:text-brand-950" href={`mailto:${CONTACT_EMAIL}`}>
-              {CONTACT_EMAIL}
-            </a>
-          </div>
-          <div className="flex flex-wrap gap-5">
-            <a className="hover:text-slate-950" href="/privacy">
-              {content.footer.privacy}
-            </a>
-            <a className="hover:text-slate-950" href="/terms">
-              {content.footer.terms}
-            </a>
-            {content.footer.rights ? (
-              <span>
-                © {currentYear} {BRAND_NAME}. {content.footer.rights}
-              </span>
-            ) : null}
-          </div>
-        </div>
-      </footer>
+      <SiteFooter currentYear={currentYear} locale={language} />
     </div>
   )
 }
