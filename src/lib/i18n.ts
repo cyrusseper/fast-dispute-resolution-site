@@ -1,5 +1,4 @@
 export const BRAND_NAME = "Fast Dispute Resolution"
-export const ARTEMIS_CTA_URL = "https://artemischat.com/rooms/fast-dispute-resolutions-10d5/service-request"
 export const CONTACT_EMAIL = "support@fastdisputeresolution.com"
 
 export const languages = [

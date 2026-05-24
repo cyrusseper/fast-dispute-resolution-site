@@ -17,7 +17,6 @@ import {
 import { useEffect, useMemo, useState } from "react"
 import { SiteFooter } from "@/components/SiteFooter"
 import {
-  ARTEMIS_CTA_URL,
   BRAND_NAME,
   LanguageCode,
   copy,
@@ -39,7 +38,7 @@ export function LandingPage() {
   const credibility = content.credibility ?? fallback.credibility ?? { title: "", body: "" }
   const pricingChecklist = content.pricing.checklist ?? fallback.pricing.checklist ?? []
   const direction = getDirection(language)
-  const ctaUrl = `${ARTEMIS_CTA_URL}?lang=${language}`
+  const ctaUrl = "/start"
 
   useEffect(() => {
     const stored = window.localStorage.getItem("fdr-language")
