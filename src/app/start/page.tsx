@@ -92,7 +92,13 @@ export default function StartPage() {
                     <ArrowRight className="size-5" aria-hidden="true" />
                   </a>
                   <p className="mt-3 text-center text-sm text-slate-500">
-                    Questions before you begin? We’re here to help — support@fastdisputeresolution.com
+                    Questions before you begin? We’re here to help —{" "}
+                    <a
+                      href="mailto:support@fastdisputeresolution.com"
+                      className="font-medium text-brand-700 underline-offset-4 hover:underline"
+                    >
+                      support@fastdisputeresolution.com
+                    </a>
                   </p>
                   <p className="flex items-center gap-2 text-sm font-semibold text-slate-500">
                     <CheckCircle2 className="size-4 text-brand-600" aria-hidden="true" />
