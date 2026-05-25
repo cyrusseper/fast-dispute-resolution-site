@@ -14,7 +14,7 @@ const steps = [
 ]
 
 const reassuranceItems = [
-  { text: "Takes about 5-10 minutes", icon: Clock3 },
+  { text: "Takes about 5–10 minutes to get started", icon: Clock3 },
   { text: "No pressure - continue anytime", icon: RotateCcw },
   { text: "Private and secure", icon: ShieldCheck },
 ]
@@ -91,6 +91,9 @@ export default function StartPage() {
                     Continue to Secure Setup
                     <ArrowRight className="size-5" aria-hidden="true" />
                   </a>
+                  <p className="mt-3 text-center text-sm text-slate-500">
+                    Questions before you begin? We’re here to help — support@fastdisputeresolution.com
+                  </p>
                   <p className="flex items-center gap-2 text-sm font-semibold text-slate-500">
                     <CheckCircle2 className="size-4 text-brand-600" aria-hidden="true" />
                     You will see pricing before any payment.
