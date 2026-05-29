@@ -63,6 +63,7 @@ type FlowCopy = {
     helper: string
     searchPlaceholder: string
     selectedLabel: string
+    change: string
     noResults: string
   }
   mostlyAgree: {
@@ -204,6 +205,7 @@ const fallbackCopy: FlowCopy = {
     helper: "Choose the state where this family matter should be handled.",
     searchPlaceholder: "Search states",
     selectedLabel: "Selected state",
+    change: "Change",
     noResults: "No matching states",
   },
   mostlyAgree: {
@@ -292,6 +294,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       helper: "Elige el estado donde debe manejarse este asunto familiar.",
       searchPlaceholder: "Buscar estados",
       selectedLabel: "Estado seleccionado",
+      change: "Cambiar",
       noResults: "No hay estados coincidentes",
     },
     mostlyAgree: {
@@ -366,6 +369,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       helper: "Escolha o estado onde este assunto familiar deve ser tratado.",
       searchPlaceholder: "Buscar estados",
       selectedLabel: "Estado selecionado",
+      change: "Alterar",
       noResults: "Nenhum estado encontrado",
     },
     mostlyAgree: {
@@ -440,6 +444,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       helper: "Choisissez l’État où cette question familiale doit être traitée.",
       searchPlaceholder: "Rechercher un État",
       selectedLabel: "État sélectionné",
+      change: "Changer",
       noResults: "Aucun État correspondant",
     },
     mostlyAgree: {
@@ -514,6 +519,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       helper: "اختر الولاية التي يجب التعامل فيها مع هذه المسألة الأسرية.",
       searchPlaceholder: "ابحث عن ولاية",
       selectedLabel: "الولاية المختارة",
+      change: "تغيير",
       noResults: "لا توجد ولايات مطابقة",
     },
     mostlyAgree: {
@@ -588,6 +594,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       helper: "ایالتی را انتخاب کنید که این موضوع خانوادگی باید در آن رسیدگی شود.",
       searchPlaceholder: "جستجوی ایالت‌ها",
       selectedLabel: "ایالت انتخاب‌شده",
+      change: "تغییر",
       noResults: "ایالت مطابقی پیدا نشد",
     },
     mostlyAgree: {
@@ -662,6 +669,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       helper: "Выберите штат, где должен рассматриваться этот семейный вопрос.",
       searchPlaceholder: "Поиск штатов",
       selectedLabel: "Выбранный штат",
+      change: "Изменить",
       noResults: "Нет подходящих штатов",
     },
     mostlyAgree: {
@@ -736,6 +744,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       helper: "请选择应处理该家庭事项的州。",
       searchPlaceholder: "搜索州",
       selectedLabel: "已选州",
+      change: "更改",
       noResults: "没有匹配的州",
     },
     mostlyAgree: {
@@ -810,6 +819,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       helper: "वह राज्य चुनें जहाँ यह पारिवारिक मामला संभाला जाना चाहिए.",
       searchPlaceholder: "राज्य खोजें",
       selectedLabel: "चुना गया राज्य",
+      change: "बदलें",
       noResults: "कोई मेल खाता राज्य नहीं",
     },
     mostlyAgree: {
@@ -1125,9 +1135,21 @@ export function PreCaseStartFlow() {
                   <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{copy.jurisdiction.title}</h1>
                   <p className="mt-3 text-base leading-7 text-slate-600">{copy.jurisdiction.helper}</p>
                   {selectedStateName ? (
-                    <div className="mt-5 rounded-lg border border-brand-100 bg-brand-50 px-4 py-3">
-                      <p className="text-xs font-bold uppercase tracking-wide text-brand-700">{copy.jurisdiction.selectedLabel}</p>
-                      <p className="mt-1 text-base font-bold text-brand-950">{selectedStateName}</p>
+                    <div className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-brand-100 bg-brand-50 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-wide text-brand-700">{copy.jurisdiction.selectedLabel}</p>
+                        <p className="mt-1 truncate text-base font-bold text-brand-950">{selectedStateName}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStateSearch("")
+                          setError("")
+                        }}
+                        className="focus-ring shrink-0 rounded-md border border-brand-200 bg-white px-3 py-2 text-xs font-bold text-brand-800 transition hover:bg-brand-50"
+                      >
+                        {copy.jurisdiction.change}
+                      </button>
                     </div>
                   ) : null}
                   <label className="mt-5 grid gap-2 text-sm font-semibold text-slate-700">
@@ -1137,6 +1159,11 @@ export function PreCaseStartFlow() {
                       <input
                         value={stateSearch}
                         onChange={(event) => setStateSearch(event.target.value)}
+                        onFocus={() => {
+                          if (selectedStateName && stateSearch === selectedStateName) {
+                            setStateSearch("")
+                          }
+                        }}
                         placeholder={copy.jurisdiction.searchPlaceholder}
                         className="h-12 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-base outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-100"
                       />
@@ -1195,29 +1222,32 @@ export function PreCaseStartFlow() {
                   <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{copy.contact.title}</h1>
                   <p className="mt-3 text-base leading-7 text-slate-600">{copy.contact.helper}</p>
                   <div className="mt-7 grid gap-4">
-                    <div className="grid gap-4 sm:grid-cols-3">
-                      <label className="grid gap-2 text-sm font-semibold text-slate-700">
-                        {copy.contact.firstName}
+                    <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,1fr)]">
+                      <label className="grid min-w-0 grid-rows-[auto_3rem] gap-2 text-sm font-semibold text-slate-700">
+                        <span className="flex min-h-5 items-center">{copy.contact.firstName}</span>
                         <input
                           value={firstName}
                           onChange={(event) => setFirstName(event.target.value)}
-                          className="h-12 rounded-lg border border-slate-200 px-4 text-base outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-100"
+                          className="h-12 min-w-0 rounded-lg border border-slate-200 px-4 text-base outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-100"
                         />
                       </label>
-                      <label className="grid gap-2 text-sm font-semibold text-slate-700">
-                        {copy.contact.middleName} <span className="font-normal text-slate-500">({copy.optional})</span>
+                      <label className="grid min-w-0 grid-rows-[auto_3rem] gap-2 text-sm font-semibold text-slate-700">
+                        <span className="flex min-h-5 items-center gap-1 truncate">
+                          <span className="truncate">{copy.contact.middleName}</span>
+                          <span className="shrink-0 font-normal text-slate-500">({copy.optional})</span>
+                        </span>
                         <input
                           value={middleName}
                           onChange={(event) => setMiddleName(event.target.value)}
-                          className="h-12 rounded-lg border border-slate-200 px-4 text-base outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-100"
+                          className="h-12 min-w-0 rounded-lg border border-slate-200 px-4 text-base outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-100"
                         />
                       </label>
-                      <label className="grid gap-2 text-sm font-semibold text-slate-700">
-                        {copy.contact.lastName}
+                      <label className="grid min-w-0 grid-rows-[auto_3rem] gap-2 text-sm font-semibold text-slate-700">
+                        <span className="flex min-h-5 items-center">{copy.contact.lastName}</span>
                         <input
                           value={lastName}
                           onChange={(event) => setLastName(event.target.value)}
-                          className="h-12 rounded-lg border border-slate-200 px-4 text-base outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-100"
+                          className="h-12 min-w-0 rounded-lg border border-slate-200 px-4 text-base outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-100"
                         />
                       </label>
                     </div>
