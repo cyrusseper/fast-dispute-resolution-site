@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { ArrowLeft, ArrowRight, Check, Loader2, RotateCcw, ShieldCheck } from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, Clipboard, Loader2, Search, ShieldCheck } from "lucide-react"
 import { BRAND_NAME, languages, type LanguageCode } from "@/lib/i18n"
 
 type IssueType =
@@ -26,9 +26,10 @@ type DraftResponse = {
     mostlyAgree?: Posture | null
     otherPartyOnline?: OnlineParticipation | null
     firstName?: string | null
+    middleName?: string | null
+    lastName?: string | null
     email?: string | null
     phone?: string | null
-    smsConsent?: boolean | null
     paymentResponsibility?: PaymentResponsibility | null
     recommendedPath?: RecommendedPath | null
     lastCompletedStep?: number | null
@@ -47,6 +48,7 @@ type FlowCopy = {
   save: string
   progress: string
   optional: string
+  planningBadge: string
   language: {
     title: string
     helper: string
@@ -59,7 +61,9 @@ type FlowCopy = {
   jurisdiction: {
     title: string
     helper: string
-    placeholder: string
+    searchPlaceholder: string
+    selectedLabel: string
+    noResults: string
   }
   mostlyAgree: {
     title: string
@@ -73,9 +77,11 @@ type FlowCopy = {
     title: string
     helper: string
     firstName: string
+    middleName: string
+    lastName: string
     email: string
     phone: string
-    smsConsent: string
+    reassurance: string
   }
   payment: {
     title: string
@@ -86,15 +92,88 @@ type FlowCopy = {
     title: string
     builder: string
     mediation: string
-    fee: string
+    pricing: string
     nextTitle: string
     next: string[]
-    continueLink: string
+    done: string
+    edit: string
+    copyContinueLink: string
+    copied: string
+    testerNote: string
   }
 }
 
+const usStates = [
+  ["US-AL", "Alabama"],
+  ["US-AK", "Alaska"],
+  ["US-AZ", "Arizona"],
+  ["US-AR", "Arkansas"],
+  ["US-CA", "California"],
+  ["US-CO", "Colorado"],
+  ["US-CT", "Connecticut"],
+  ["US-DE", "Delaware"],
+  ["US-FL", "Florida"],
+  ["US-GA", "Georgia"],
+  ["US-HI", "Hawaii"],
+  ["US-ID", "Idaho"],
+  ["US-IL", "Illinois"],
+  ["US-IN", "Indiana"],
+  ["US-IA", "Iowa"],
+  ["US-KS", "Kansas"],
+  ["US-KY", "Kentucky"],
+  ["US-LA", "Louisiana"],
+  ["US-ME", "Maine"],
+  ["US-MD", "Maryland"],
+  ["US-MA", "Massachusetts"],
+  ["US-MI", "Michigan"],
+  ["US-MN", "Minnesota"],
+  ["US-MS", "Mississippi"],
+  ["US-MO", "Missouri"],
+  ["US-MT", "Montana"],
+  ["US-NE", "Nebraska"],
+  ["US-NV", "Nevada"],
+  ["US-NH", "New Hampshire"],
+  ["US-NJ", "New Jersey"],
+  ["US-NM", "New Mexico"],
+  ["US-NY", "New York"],
+  ["US-NC", "North Carolina"],
+  ["US-ND", "North Dakota"],
+  ["US-OH", "Ohio"],
+  ["US-OK", "Oklahoma"],
+  ["US-OR", "Oregon"],
+  ["US-PA", "Pennsylvania"],
+  ["US-RI", "Rhode Island"],
+  ["US-SC", "South Carolina"],
+  ["US-SD", "South Dakota"],
+  ["US-TN", "Tennessee"],
+  ["US-TX", "Texas"],
+  ["US-UT", "Utah"],
+  ["US-VT", "Vermont"],
+  ["US-VA", "Virginia"],
+  ["US-WA", "Washington"],
+  ["US-WV", "West Virginia"],
+  ["US-WI", "Wisconsin"],
+  ["US-WY", "Wyoming"],
+] as const
+
+type UsStateCode = (typeof usStates)[number][0]
+
+const stateByCode = new Map<string, string>(usStates)
+
+const normalizeJurisdiction = (value: string | null | undefined) => {
+  if (!value) return ""
+  const trimmed = value.trim()
+  if (stateByCode.has(trimmed)) return trimmed
+  const upper = trimmed.toUpperCase()
+  if (stateByCode.has(`US-${upper}`)) return `US-${upper}`
+  const match = usStates.find(([, name]) => name.toLowerCase() === trimmed.toLowerCase())
+  return match?.[0] || ""
+}
+
+const getStateName = (code: string) => stateByCode.get(code) || ""
+
 const fallbackCopy: FlowCopy = {
-  saved: "Progress saved",
+  saved: "Saved",
   loading: "Saving...",
   error: "Please complete this step to continue.",
   back: "Back",
@@ -102,6 +181,7 @@ const fallbackCopy: FlowCopy = {
   save: "Save progress",
   progress: "Step",
   optional: "optional",
+  planningBadge: "Planning stage",
   language: {
     title: "What language would you like to use?",
     helper: "The rest of this setup will switch right away.",
@@ -120,9 +200,11 @@ const fallbackCopy: FlowCopy = {
     },
   },
   jurisdiction: {
-    title: "What state or jurisdiction applies?",
-    helper: "Use the place where the family matter should be handled.",
-    placeholder: "California",
+    title: "Which U.S. state applies?",
+    helper: "Choose the state where this family matter should be handled.",
+    searchPlaceholder: "Search states",
+    selectedLabel: "Selected state",
+    noResults: "No matching states",
   },
   mostlyAgree: {
     title: "Do you already mostly agree on the outcome?",
@@ -141,12 +223,14 @@ const fallbackCopy: FlowCopy = {
     },
   },
   contact: {
-    title: "Where should we save your progress?",
-    helper: "We will use this to help you continue later. No case is created yet.",
+    title: "Save your progress",
+    helper: "Enter your name and email so we can bring you back to this step later.",
     firstName: "First name",
+    middleName: "Middle name",
+    lastName: "Last name",
     email: "Email",
     phone: "Phone",
-    smsConsent: "Text me reminders about this saved progress.",
+    reassurance: "Your progress is saved securely. We use your email to help you continue later.",
   },
   payment: {
     title: "Who should pay the remaining balance?",
@@ -161,14 +245,18 @@ const fallbackCopy: FlowCopy = {
     title: "Recommended path",
     builder: "Guided Agreement Builder",
     mediation: "Guided Online Mediation",
-    fee: "Activation fee: [amount shown before payment]",
+    pricing: "Exact pricing will be shown before payment.",
     nextTitle: "What happens next",
     next: [
-      "Your progress is saved.",
-      "You will see the activation fee before any payment.",
-      "The next step opens the secure setup when you are ready.",
+      "Your answers are saved.",
+      "You can return with your continue link.",
+      "Secure setup and payment will come later.",
     ],
-    continueLink: "Continue link",
+    done: "Done for now",
+    edit: "Edit answers",
+    copyContinueLink: "Copy continue link",
+    copied: "Copied",
+    testerNote: "For testing only. The link is not shown on the page.",
   },
 }
 
@@ -176,7 +264,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
   en: fallbackCopy,
   es: {
     ...fallbackCopy,
-    saved: "Progreso guardado",
+    saved: "Guardado",
     loading: "Guardando...",
     error: "Completa este paso para continuar.",
     back: "Atrás",
@@ -184,6 +272,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
     save: "Guardar progreso",
     progress: "Paso",
     optional: "opcional",
+    planningBadge: "Etapa de planificación",
     language: { title: "¿Qué idioma quieres usar?", helper: "El resto de esta configuración cambiará de inmediato." },
     issue: {
       title: "¿Con qué necesitas ayuda?",
@@ -198,38 +287,58 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
         other_family: "Otro asunto familiar",
       },
     },
-    jurisdiction: { title: "¿Qué estado o jurisdicción aplica?", helper: "Usa el lugar donde debe manejarse el asunto familiar.", placeholder: "California" },
+    jurisdiction: {
+      title: "¿Qué estado de EE. UU. aplica?",
+      helper: "Elige el estado donde debe manejarse este asunto familiar.",
+      searchPlaceholder: "Buscar estados",
+      selectedLabel: "Estado seleccionado",
+      noResults: "No hay estados coincidentes",
+    },
     mostlyAgree: {
       title: "¿Ya están mayormente de acuerdo con el resultado?",
-      options: { mostly_agree: "Sí, en su mayoría", need_help: "No, necesitamos ayuda para llegar a un acuerdo", not_sure: "No estoy seguro todavía" },
+      options: {
+        mostly_agree: "Sí, en su mayoría",
+        need_help: "No, necesitamos ayuda para llegar a un acuerdo",
+        not_sure: "No estoy seguro todavía",
+      },
     },
     otherPartyOnline: { title: "¿Es probable que la otra persona participe en línea?", options: { yes: "Sí", maybe: "Tal vez", no: "No" } },
     contact: {
-      title: "¿Dónde debemos guardar tu progreso?",
-      helper: "Usaremos esto para ayudarte a continuar después. Todavía no se crea ningún caso.",
+      title: "Guarda tu progreso",
+      helper: "Ingresa tu nombre y correo para que podamos traerte de vuelta a este paso más tarde.",
       firstName: "Nombre",
+      middleName: "Segundo nombre",
+      lastName: "Apellido",
       email: "Correo electrónico",
       phone: "Teléfono",
-      smsConsent: "Envíenme recordatorios por texto sobre este progreso guardado.",
+      reassurance: "Tu progreso se guarda de forma segura. Usamos tu correo para ayudarte a continuar después.",
     },
     payment: {
       title: "¿Quién debe pagar el saldo restante?",
       helper: "Esto solo registra la responsabilidad. Aquí no se cobra ningún pago.",
-      options: { self: "Yo pagaré el saldo restante", split_equal: "Dividir el saldo restante por igual", other_party: "Quiero que la otra parte pague el saldo restante" },
+      options: {
+        self: "Yo pagaré el saldo restante",
+        split_equal: "Dividir el saldo restante por igual",
+        other_party: "Quiero que la otra parte pague el saldo restante",
+      },
     },
     recommended: {
       title: "Ruta recomendada",
       builder: "Constructor guiado de acuerdos",
       mediation: "Mediación guiada en línea",
-      fee: "Tarifa de activación: [monto mostrado antes del pago]",
+      pricing: "El precio exacto se mostrará antes del pago.",
       nextTitle: "Qué pasa después",
-      next: ["Tu progreso está guardado.", "Verás la tarifa de activación antes de cualquier pago.", "El siguiente paso abre la configuración segura cuando estés listo."],
-      continueLink: "Enlace para continuar",
+      next: ["Tus respuestas están guardadas.", "Puedes volver con tu enlace para continuar.", "La configuración segura y el pago vendrán después."],
+      done: "Terminar por ahora",
+      edit: "Editar respuestas",
+      copyContinueLink: "Copiar enlace para continuar",
+      copied: "Copiado",
+      testerNote: "Solo para pruebas. El enlace no se muestra en la página.",
     },
   },
   pt: {
     ...fallbackCopy,
-    saved: "Progresso salvo",
+    saved: "Salvo",
     loading: "Salvando...",
     error: "Conclua esta etapa para continuar.",
     back: "Voltar",
@@ -237,6 +346,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
     save: "Salvar progresso",
     progress: "Etapa",
     optional: "opcional",
+    planningBadge: "Etapa de planejamento",
     language: { title: "Que idioma você gostaria de usar?", helper: "O restante desta configuração mudará imediatamente." },
     issue: {
       title: "Com o que você precisa de ajuda?",
@@ -251,10 +361,32 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
         other_family: "Outro assunto familiar",
       },
     },
-    jurisdiction: { title: "Qual estado ou jurisdição se aplica?", helper: "Use o local onde o assunto familiar deve ser tratado.", placeholder: "Califórnia" },
-    mostlyAgree: { title: "Vocês já concordam em grande parte com o resultado?", options: { mostly_agree: "Sim, em grande parte", need_help: "Não, precisamos de ajuda para chegar a um acordo", not_sure: "Ainda não tenho certeza" } },
+    jurisdiction: {
+      title: "Qual estado dos EUA se aplica?",
+      helper: "Escolha o estado onde este assunto familiar deve ser tratado.",
+      searchPlaceholder: "Buscar estados",
+      selectedLabel: "Estado selecionado",
+      noResults: "Nenhum estado encontrado",
+    },
+    mostlyAgree: {
+      title: "Vocês já concordam em grande parte com o resultado?",
+      options: {
+        mostly_agree: "Sim, em grande parte",
+        need_help: "Não, precisamos de ajuda para chegar a um acordo",
+        not_sure: "Ainda não tenho certeza",
+      },
+    },
     otherPartyOnline: { title: "A outra pessoa provavelmente participará online?", options: { yes: "Sim", maybe: "Talvez", no: "Não" } },
-    contact: { ...fallbackCopy.contact, title: "Onde devemos salvar seu progresso?", helper: "Usaremos isso para ajudar você a continuar depois. Nenhum caso é criado ainda.", firstName: "Nome", email: "E-mail", phone: "Telefone", smsConsent: "Envie lembretes por SMS sobre este progresso salvo." },
+    contact: {
+      title: "Salve seu progresso",
+      helper: "Informe seu nome e e-mail para que possamos trazer você de volta a esta etapa depois.",
+      firstName: "Nome",
+      middleName: "Nome do meio",
+      lastName: "Sobrenome",
+      email: "E-mail",
+      phone: "Telefone",
+      reassurance: "Seu progresso é salvo com segurança. Usamos seu e-mail para ajudar você a continuar depois.",
+    },
     payment: {
       title: "Quem deve pagar o saldo restante?",
       helper: "Isso apenas registra a responsabilidade. Nenhum pagamento é cobrado aqui.",
@@ -268,15 +400,19 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       title: "Caminho recomendado",
       builder: "Construtor guiado de acordo",
       mediation: "Mediação online guiada",
-      fee: "Taxa de ativação: [valor mostrado antes do pagamento]",
+      pricing: "O preço exato será mostrado antes do pagamento.",
       nextTitle: "O que acontece a seguir",
-      next: ["Seu progresso está salvo.", "Você verá a taxa de ativação antes de qualquer pagamento.", "A próxima etapa abre a configuração segura quando estiver pronto."],
-      continueLink: "Link para continuar",
+      next: ["Suas respostas estão salvas.", "Você pode voltar com seu link de continuação.", "A configuração segura e o pagamento virão depois."],
+      done: "Concluir por agora",
+      edit: "Editar respostas",
+      copyContinueLink: "Copiar link de continuação",
+      copied: "Copiado",
+      testerNote: "Somente para teste. O link não é exibido na página.",
     },
   },
   fr: {
     ...fallbackCopy,
-    saved: "Progression enregistrée",
+    saved: "Enregistré",
     loading: "Enregistrement...",
     error: "Complétez cette étape pour continuer.",
     back: "Retour",
@@ -284,6 +420,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
     save: "Enregistrer",
     progress: "Étape",
     optional: "facultatif",
+    planningBadge: "Étape de planification",
     language: { title: "Quelle langue souhaitez-vous utiliser ?", helper: "Le reste de cette configuration changera immédiatement." },
     issue: {
       title: "De quoi avez-vous besoin ?",
@@ -298,10 +435,32 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
         other_family: "Autre question familiale",
       },
     },
-    jurisdiction: { title: "Quel État ou quelle juridiction s’applique ?", helper: "Indiquez le lieu où la question familiale doit être traitée.", placeholder: "Californie" },
-    mostlyAgree: { title: "Êtes-vous déjà principalement d’accord sur le résultat ?", options: { mostly_agree: "Oui, principalement", need_help: "Non, nous avons besoin d’aide pour trouver un accord", not_sure: "Pas encore sûr" } },
+    jurisdiction: {
+      title: "Quel État américain s’applique ?",
+      helper: "Choisissez l’État où cette question familiale doit être traitée.",
+      searchPlaceholder: "Rechercher un État",
+      selectedLabel: "État sélectionné",
+      noResults: "Aucun État correspondant",
+    },
+    mostlyAgree: {
+      title: "Êtes-vous déjà principalement d’accord sur le résultat ?",
+      options: {
+        mostly_agree: "Oui, principalement",
+        need_help: "Non, nous avons besoin d’aide pour trouver un accord",
+        not_sure: "Pas encore sûr",
+      },
+    },
     otherPartyOnline: { title: "L’autre personne est-elle susceptible de participer en ligne ?", options: { yes: "Oui", maybe: "Peut-être", no: "Non" } },
-    contact: { ...fallbackCopy.contact, title: "Où devons-nous enregistrer votre progression ?", helper: "Nous l’utiliserons pour vous aider à reprendre plus tard. Aucun dossier n’est encore créé.", firstName: "Prénom", email: "E-mail", phone: "Téléphone", smsConsent: "Envoyez-moi des rappels par SMS sur cette progression." },
+    contact: {
+      title: "Enregistrer votre progression",
+      helper: "Indiquez votre nom et votre e-mail afin que nous puissions vous ramener à cette étape plus tard.",
+      firstName: "Prénom",
+      middleName: "Deuxième prénom",
+      lastName: "Nom de famille",
+      email: "E-mail",
+      phone: "Téléphone",
+      reassurance: "Votre progression est enregistrée en sécurité. Nous utilisons votre e-mail pour vous aider à reprendre plus tard.",
+    },
     payment: {
       title: "Qui devrait payer le solde restant ?",
       helper: "Cela indique seulement la responsabilité. Aucun paiement n’est perçu ici.",
@@ -315,15 +474,19 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       title: "Parcours recommandé",
       builder: "Créateur d’accord guidé",
       mediation: "Médiation en ligne guidée",
-      fee: "Frais d’activation : [montant affiché avant paiement]",
+      pricing: "Le prix exact sera indiqué avant le paiement.",
       nextTitle: "Ce qui se passe ensuite",
-      next: ["Votre progression est enregistrée.", "Vous verrez les frais d’activation avant tout paiement.", "L’étape suivante ouvre la configuration sécurisée lorsque vous êtes prêt."],
-      continueLink: "Lien de reprise",
+      next: ["Vos réponses sont enregistrées.", "Vous pouvez revenir avec votre lien de reprise.", "La configuration sécurisée et le paiement viendront plus tard."],
+      done: "Terminer pour l’instant",
+      edit: "Modifier les réponses",
+      copyContinueLink: "Copier le lien de reprise",
+      copied: "Copié",
+      testerNote: "Réservé aux tests. Le lien n’est pas affiché sur la page.",
     },
   },
   ar: {
     ...fallbackCopy,
-    saved: "تم حفظ التقدم",
+    saved: "محفوظ",
     loading: "جار الحفظ...",
     error: "يرجى إكمال هذه الخطوة للمتابعة.",
     back: "رجوع",
@@ -331,6 +494,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
     save: "حفظ التقدم",
     progress: "الخطوة",
     optional: "اختياري",
+    planningBadge: "مرحلة التخطيط",
     language: { title: "ما اللغة التي ترغب في استخدامها؟", helper: "سيتغير باقي هذا الإعداد فورًا." },
     issue: {
       title: "بماذا تحتاج إلى مساعدة؟",
@@ -345,10 +509,32 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
         other_family: "مسألة أسرية أخرى",
       },
     },
-    jurisdiction: { title: "ما الولاية أو الاختصاص القضائي المعني؟", helper: "استخدم المكان الذي يجب التعامل فيه مع المسألة الأسرية.", placeholder: "كاليفورنيا" },
-    mostlyAgree: { title: "هل أنتم متفقون غالبًا على النتيجة؟", options: { mostly_agree: "نعم، غالبًا", need_help: "لا، نحتاج مساعدة للوصول إلى اتفاق", not_sure: "لست متأكدًا بعد" } },
+    jurisdiction: {
+      title: "أي ولاية أمريكية تنطبق؟",
+      helper: "اختر الولاية التي يجب التعامل فيها مع هذه المسألة الأسرية.",
+      searchPlaceholder: "ابحث عن ولاية",
+      selectedLabel: "الولاية المختارة",
+      noResults: "لا توجد ولايات مطابقة",
+    },
+    mostlyAgree: {
+      title: "هل أنتم متفقون غالبًا على النتيجة؟",
+      options: {
+        mostly_agree: "نعم، غالبًا",
+        need_help: "لا، نحتاج مساعدة للوصول إلى اتفاق",
+        not_sure: "لست متأكدًا بعد",
+      },
+    },
     otherPartyOnline: { title: "هل من المحتمل أن يشارك الشخص الآخر عبر الإنترنت؟", options: { yes: "نعم", maybe: "ربما", no: "لا" } },
-    contact: { ...fallbackCopy.contact, title: "أين يجب أن نحفظ تقدمك؟", helper: "سنستخدم هذا لمساعدتك على المتابعة لاحقًا. لم يتم إنشاء قضية بعد.", firstName: "الاسم الأول", email: "البريد الإلكتروني", phone: "الهاتف", smsConsent: "أرسلوا لي تذكيرات نصية حول هذا التقدم المحفوظ." },
+    contact: {
+      title: "احفظ تقدمك",
+      helper: "أدخل اسمك وبريدك الإلكتروني حتى نعيدك إلى هذه الخطوة لاحقًا.",
+      firstName: "الاسم الأول",
+      middleName: "الاسم الأوسط",
+      lastName: "اسم العائلة",
+      email: "البريد الإلكتروني",
+      phone: "الهاتف",
+      reassurance: "يتم حفظ تقدمك بأمان. نستخدم بريدك الإلكتروني لمساعدتك على المتابعة لاحقًا.",
+    },
     payment: {
       title: "من يجب أن يدفع الرصيد المتبقي؟",
       helper: "هذا يسجل المسؤولية فقط. لا يتم تحصيل أي دفعة هنا.",
@@ -362,15 +548,19 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       title: "المسار الموصى به",
       builder: "منشئ اتفاق موجه",
       mediation: "وساطة موجهة عبر الإنترنت",
-      fee: "رسوم التفعيل: [يظهر المبلغ قبل الدفع]",
+      pricing: "سيظهر السعر الدقيق قبل الدفع.",
       nextTitle: "ماذا يحدث بعد ذلك",
-      next: ["تم حفظ تقدمك.", "سترى رسوم التفعيل قبل أي دفع.", "تفتح الخطوة التالية الإعداد الآمن عندما تكون جاهزًا."],
-      continueLink: "رابط المتابعة",
+      next: ["تم حفظ إجاباتك.", "يمكنك العودة باستخدام رابط المتابعة.", "سيأتي الإعداد الآمن والدفع لاحقًا."],
+      done: "انتهيت الآن",
+      edit: "تعديل الإجابات",
+      copyContinueLink: "نسخ رابط المتابعة",
+      copied: "تم النسخ",
+      testerNote: "للاختبار فقط. لا يظهر الرابط على الصفحة.",
     },
   },
   fa: {
     ...fallbackCopy,
-    saved: "پیشرفت ذخیره شد",
+    saved: "ذخیره شد",
     loading: "در حال ذخیره...",
     error: "برای ادامه این مرحله را کامل کنید.",
     back: "بازگشت",
@@ -378,6 +568,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
     save: "ذخیره پیشرفت",
     progress: "مرحله",
     optional: "اختیاری",
+    planningBadge: "مرحله برنامه‌ریزی",
     language: { title: "می‌خواهید از چه زبانی استفاده کنید؟", helper: "بقیه این فرایند فوراً به همان زبان تغییر می‌کند." },
     issue: {
       title: "برای چه موضوعی کمک می‌خواهید؟",
@@ -392,10 +583,32 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
         other_family: "موضوع خانوادگی دیگر",
       },
     },
-    jurisdiction: { title: "کدام ایالت یا حوزه قضایی اعمال می‌شود؟", helper: "محلی را وارد کنید که موضوع خانوادگی باید در آن رسیدگی شود.", placeholder: "کالیفرنیا" },
-    mostlyAgree: { title: "آیا درباره نتیجه تا حد زیادی توافق دارید؟", options: { mostly_agree: "بله، تا حد زیادی", need_help: "نه، برای رسیدن به توافق کمک لازم داریم", not_sure: "هنوز مطمئن نیستم" } },
+    jurisdiction: {
+      title: "کدام ایالت آمریکا اعمال می‌شود؟",
+      helper: "ایالتی را انتخاب کنید که این موضوع خانوادگی باید در آن رسیدگی شود.",
+      searchPlaceholder: "جستجوی ایالت‌ها",
+      selectedLabel: "ایالت انتخاب‌شده",
+      noResults: "ایالت مطابقی پیدا نشد",
+    },
+    mostlyAgree: {
+      title: "آیا درباره نتیجه تا حد زیادی توافق دارید؟",
+      options: {
+        mostly_agree: "بله، تا حد زیادی",
+        need_help: "نه، برای رسیدن به توافق کمک لازم داریم",
+        not_sure: "هنوز مطمئن نیستم",
+      },
+    },
     otherPartyOnline: { title: "آیا احتمال دارد طرف مقابل آنلاین شرکت کند؟", options: { yes: "بله", maybe: "شاید", no: "نه" } },
-    contact: { ...fallbackCopy.contact, title: "پیشرفت شما را کجا ذخیره کنیم؟", helper: "از این برای ادامه دادن در آینده استفاده می‌کنیم. هنوز پرونده‌ای ایجاد نشده است.", firstName: "نام", email: "ایمیل", phone: "تلفن", smsConsent: "برای این پیشرفت ذخیره‌شده پیامک یادآوری بفرستید." },
+    contact: {
+      title: "پیشرفت خود را ذخیره کنید",
+      helper: "نام و ایمیل خود را وارد کنید تا بعداً شما را به همین مرحله برگردانیم.",
+      firstName: "نام",
+      middleName: "نام میانی",
+      lastName: "نام خانوادگی",
+      email: "ایمیل",
+      phone: "تلفن",
+      reassurance: "پیشرفت شما به‌صورت امن ذخیره می‌شود. از ایمیل شما برای ادامه دادن در آینده استفاده می‌کنیم.",
+    },
     payment: {
       title: "چه کسی باید باقی‌مانده مبلغ را پرداخت کند؟",
       helper: "اینجا فقط مسئولیت پرداخت ثبت می‌شود. پرداختی دریافت نمی‌شود.",
@@ -409,15 +622,19 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       title: "مسیر پیشنهادی",
       builder: "سازنده توافق راهنمایی‌شده",
       mediation: "میانجی‌گری آنلاین راهنمایی‌شده",
-      fee: "هزینه فعال‌سازی: [مبلغ پیش از پرداخت نمایش داده می‌شود]",
+      pricing: "قیمت دقیق پیش از پرداخت نمایش داده می‌شود.",
       nextTitle: "بعد چه می‌شود",
-      next: ["پیشرفت شما ذخیره شده است.", "پیش از هر پرداخت، هزینه فعال‌سازی را خواهید دید.", "مرحله بعدی هر زمان آماده باشید تنظیمات امن را باز می‌کند."],
-      continueLink: "پیوند ادامه",
+      next: ["پاسخ‌های شما ذخیره شده است.", "می‌توانید با پیوند ادامه برگردید.", "تنظیم امن و پرداخت بعداً انجام می‌شود."],
+      done: "فعلاً تمام",
+      edit: "ویرایش پاسخ‌ها",
+      copyContinueLink: "کپی پیوند ادامه",
+      copied: "کپی شد",
+      testerNote: "فقط برای آزمایش. پیوند در صفحه نمایش داده نمی‌شود.",
     },
   },
   ru: {
     ...fallbackCopy,
-    saved: "Прогресс сохранен",
+    saved: "Сохранено",
     loading: "Сохранение...",
     error: "Заполните этот шаг, чтобы продолжить.",
     back: "Назад",
@@ -425,6 +642,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
     save: "Сохранить",
     progress: "Шаг",
     optional: "необязательно",
+    planningBadge: "Этап планирования",
     language: { title: "Какой язык вы хотите использовать?", helper: "Остальная часть настройки сразу переключится." },
     issue: {
       title: "С чем вам нужна помощь?",
@@ -439,10 +657,32 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
         other_family: "Другой семейный вопрос",
       },
     },
-    jurisdiction: { title: "Какой штат или юрисдикция применяется?", helper: "Укажите место, где должен рассматриваться семейный вопрос.", placeholder: "Калифорния" },
-    mostlyAgree: { title: "Вы уже в основном согласны с результатом?", options: { mostly_agree: "Да, в основном", need_help: "Нет, нам нужна помощь, чтобы договориться", not_sure: "Пока не уверен(а)" } },
+    jurisdiction: {
+      title: "Какой штат США применяется?",
+      helper: "Выберите штат, где должен рассматриваться этот семейный вопрос.",
+      searchPlaceholder: "Поиск штатов",
+      selectedLabel: "Выбранный штат",
+      noResults: "Нет подходящих штатов",
+    },
+    mostlyAgree: {
+      title: "Вы уже в основном согласны с результатом?",
+      options: {
+        mostly_agree: "Да, в основном",
+        need_help: "Нет, нам нужна помощь, чтобы договориться",
+        not_sure: "Пока не уверен(а)",
+      },
+    },
     otherPartyOnline: { title: "Вероятно ли, что другой человек будет участвовать онлайн?", options: { yes: "Да", maybe: "Возможно", no: "Нет" } },
-    contact: { ...fallbackCopy.contact, title: "Где сохранить ваш прогресс?", helper: "Мы используем это, чтобы помочь вам продолжить позже. Дело еще не создано.", firstName: "Имя", email: "Эл. почта", phone: "Телефон", smsConsent: "Отправляйте мне SMS-напоминания об этом сохраненном прогрессе." },
+    contact: {
+      title: "Сохраните прогресс",
+      helper: "Введите имя и электронную почту, чтобы мы могли вернуть вас к этому шагу позже.",
+      firstName: "Имя",
+      middleName: "Отчество",
+      lastName: "Фамилия",
+      email: "Эл. почта",
+      phone: "Телефон",
+      reassurance: "Ваш прогресс сохраняется безопасно. Мы используем вашу почту, чтобы помочь вам продолжить позже.",
+    },
     payment: {
       title: "Кто должен оплатить оставшийся баланс?",
       helper: "Это только фиксирует ответственность. Оплата здесь не взимается.",
@@ -456,15 +696,19 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       title: "Рекомендуемый путь",
       builder: "Пошаговый конструктор соглашения",
       mediation: "Пошаговая онлайн-медиация",
-      fee: "Активационный сбор: [сумма будет показана до оплаты]",
+      pricing: "Точная цена будет показана перед оплатой.",
       nextTitle: "Что дальше",
-      next: ["Ваш прогресс сохранен.", "Вы увидите активационный сбор до любой оплаты.", "Следующий шаг откроет безопасную настройку, когда вы будете готовы."],
-      continueLink: "Ссылка для продолжения",
+      next: ["Ваши ответы сохранены.", "Вы можете вернуться по ссылке продолжения.", "Безопасная настройка и оплата будут позже."],
+      done: "Готово на сейчас",
+      edit: "Изменить ответы",
+      copyContinueLink: "Скопировать ссылку продолжения",
+      copied: "Скопировано",
+      testerNote: "Только для тестирования. Ссылка не отображается на странице.",
     },
   },
   zh: {
     ...fallbackCopy,
-    saved: "进度已保存",
+    saved: "已保存",
     loading: "正在保存...",
     error: "请完成此步骤以继续。",
     back: "返回",
@@ -472,6 +716,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
     save: "保存进度",
     progress: "步骤",
     optional: "可选",
+    planningBadge: "规划阶段",
     language: { title: "您想使用哪种语言？", helper: "接下来的设置会立即切换。" },
     issue: {
       title: "您需要哪方面的帮助？",
@@ -486,10 +731,32 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
         other_family: "其他家庭事项",
       },
     },
-    jurisdiction: { title: "适用哪个州或司法管辖区？", helper: "请输入应处理该家庭事项的地点。", placeholder: "加利福尼亚" },
-    mostlyAgree: { title: "你们是否已经基本同意结果？", options: { mostly_agree: "是的，基本同意", need_help: "没有，我们需要帮助达成协议", not_sure: "还不确定" } },
+    jurisdiction: {
+      title: "适用哪个美国州？",
+      helper: "请选择应处理该家庭事项的州。",
+      searchPlaceholder: "搜索州",
+      selectedLabel: "已选州",
+      noResults: "没有匹配的州",
+    },
+    mostlyAgree: {
+      title: "你们是否已经基本同意结果？",
+      options: {
+        mostly_agree: "是的，基本同意",
+        need_help: "没有，我们需要帮助达成协议",
+        not_sure: "还不确定",
+      },
+    },
     otherPartyOnline: { title: "对方是否可能在线参与？", options: { yes: "是", maybe: "可能", no: "否" } },
-    contact: { ...fallbackCopy.contact, title: "我们应在哪里保存您的进度？", helper: "我们会用它帮助您以后继续。现在还不会创建案件。", firstName: "名字", email: "电子邮件", phone: "电话", smsConsent: "通过短信提醒我这个已保存的进度。" },
+    contact: {
+      title: "保存您的进度",
+      helper: "请输入姓名和电子邮件，以便我们稍后带您回到这一步。",
+      firstName: "名字",
+      middleName: "中间名",
+      lastName: "姓氏",
+      email: "电子邮件",
+      phone: "电话",
+      reassurance: "您的进度会被安全保存。我们使用您的电子邮件帮助您稍后继续。",
+    },
     payment: {
       title: "谁应支付剩余余额？",
       helper: "这里只记录责任。不收取付款。",
@@ -503,15 +770,19 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       title: "推荐路径",
       builder: "引导式协议生成器",
       mediation: "引导式在线调解",
-      fee: "启动费：[付款前显示金额]",
+      pricing: "确切价格会在付款前显示。",
       nextTitle: "接下来会发生什么",
-      next: ["您的进度已保存。", "付款前您会看到启动费。", "准备好后，下一步会打开安全设置。"],
-      continueLink: "继续链接",
+      next: ["您的答案已保存。", "您可以用继续链接返回。", "安全设置和付款将在稍后进行。"],
+      done: "暂时完成",
+      edit: "编辑答案",
+      copyContinueLink: "复制继续链接",
+      copied: "已复制",
+      testerNote: "仅用于测试。链接不会显示在页面上。",
     },
   },
   hi: {
     ...fallbackCopy,
-    saved: "प्रगति सहेजी गई",
+    saved: "सहेजा गया",
     loading: "सहेजा जा रहा है...",
     error: "जारी रखने के लिए यह चरण पूरा करें.",
     back: "वापस",
@@ -519,6 +790,7 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
     save: "प्रगति सहेजें",
     progress: "चरण",
     optional: "वैकल्पिक",
+    planningBadge: "योजना चरण",
     language: { title: "आप कौन सी भाषा उपयोग करना चाहेंगे?", helper: "बाकी सेटअप तुरंत बदल जाएगा." },
     issue: {
       title: "आपको किस बात में मदद चाहिए?",
@@ -533,10 +805,32 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
         other_family: "अन्य पारिवारिक मामला",
       },
     },
-    jurisdiction: { title: "कौन सा राज्य या न्यायक्षेत्र लागू होता है?", helper: "वह स्थान लिखें जहाँ पारिवारिक मामला संभाला जाना चाहिए.", placeholder: "कैलिफोर्निया" },
-    mostlyAgree: { title: "क्या आप परिणाम पर अधिकतर सहमत हैं?", options: { mostly_agree: "हाँ, अधिकतर", need_help: "नहीं, हमें समझौते तक पहुँचने में मदद चाहिए", not_sure: "अभी निश्चित नहीं" } },
+    jurisdiction: {
+      title: "कौन सा अमेरिकी राज्य लागू होता है?",
+      helper: "वह राज्य चुनें जहाँ यह पारिवारिक मामला संभाला जाना चाहिए.",
+      searchPlaceholder: "राज्य खोजें",
+      selectedLabel: "चुना गया राज्य",
+      noResults: "कोई मेल खाता राज्य नहीं",
+    },
+    mostlyAgree: {
+      title: "क्या आप परिणाम पर अधिकतर सहमत हैं?",
+      options: {
+        mostly_agree: "हाँ, अधिकतर",
+        need_help: "नहीं, हमें समझौते तक पहुँचने में मदद चाहिए",
+        not_sure: "अभी निश्चित नहीं",
+      },
+    },
     otherPartyOnline: { title: "क्या दूसरा व्यक्ति ऑनलाइन भाग लेने की संभावना रखता है?", options: { yes: "हाँ", maybe: "शायद", no: "नहीं" } },
-    contact: { ...fallbackCopy.contact, title: "हम आपकी प्रगति कहाँ सहेजें?", helper: "हम इसका उपयोग आपको बाद में जारी रखने में मदद करने के लिए करेंगे. अभी कोई मामला नहीं बनाया गया है.", firstName: "पहला नाम", email: "ईमेल", phone: "फोन", smsConsent: "इस सहेजी गई प्रगति के बारे में मुझे SMS याद दिलाएँ." },
+    contact: {
+      title: "अपनी प्रगति सहेजें",
+      helper: "अपना नाम और ईमेल दर्ज करें ताकि हम आपको बाद में इसी चरण पर वापस ला सकें.",
+      firstName: "पहला नाम",
+      middleName: "मध्य नाम",
+      lastName: "अंतिम नाम",
+      email: "ईमेल",
+      phone: "फोन",
+      reassurance: "आपकी प्रगति सुरक्षित रूप से सहेजी जाती है. हम आपके ईमेल का उपयोग आपको बाद में जारी रखने में मदद करने के लिए करते हैं.",
+    },
     payment: {
       title: "बाकी राशि कौन चुकाएगा?",
       helper: "यह केवल जिम्मेदारी दर्ज करता है. यहाँ कोई भुगतान नहीं लिया जाता.",
@@ -550,10 +844,14 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       title: "अनुशंसित रास्ता",
       builder: "मार्गदर्शित समझौता निर्माता",
       mediation: "मार्गदर्शित ऑनलाइन मध्यस्थता",
-      fee: "सक्रियण शुल्क: [भुगतान से पहले राशि दिखाई जाएगी]",
+      pricing: "सटीक कीमत भुगतान से पहले दिखाई जाएगी.",
       nextTitle: "आगे क्या होगा",
-      next: ["आपकी प्रगति सहेजी गई है.", "किसी भी भुगतान से पहले आपको सक्रियण शुल्क दिखेगा.", "तैयार होने पर अगला चरण सुरक्षित सेटअप खोलेगा."],
-      continueLink: "जारी रखने का लिंक",
+      next: ["आपके उत्तर सहेजे गए हैं.", "आप अपने जारी रखने वाले लिंक से वापस आ सकते हैं.", "सुरक्षित सेटअप और भुगतान बाद में आएंगे."],
+      done: "अभी के लिए पूरा",
+      edit: "उत्तर संपादित करें",
+      copyContinueLink: "जारी रखने का लिंक कॉपी करें",
+      copied: "कॉपी हुआ",
+      testerNote: "केवल परीक्षण के लिए. लिंक पृष्ठ पर नहीं दिखाया जाता.",
     },
   },
 }
@@ -562,6 +860,18 @@ const stepCount = 8
 const rtlLanguages = new Set<LanguageCode>(["ar", "fa"])
 
 const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(value.trim())
+
+const formatUSPhone = (value: string) => {
+  const digits = value.replace(/\D/g, "").replace(/^1(?=\d{10})/, "").slice(0, 10)
+  if (digits.length <= 3) return digits
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+}
+
+const normalizeUSPhone = (value: string) => {
+  const digits = value.replace(/\D/g, "").replace(/^1(?=\d{10})/, "").slice(0, 10)
+  return digits.length === 10 ? `+1${digits}` : ""
+}
 
 const recommendPath = (mostlyAgree: Posture | "", otherPartyOnline: OnlineParticipation | ""): RecommendedPath => {
   if (mostlyAgree === "mostly_agree" && otherPartyOnline !== "no") return "guided_agreement_builder"
@@ -574,21 +884,31 @@ export function PreCaseStartFlow() {
   const [language, setLanguage] = useState<LanguageCode>("en")
   const [issueType, setIssueType] = useState<IssueType | "">("")
   const [jurisdiction, setJurisdiction] = useState("")
+  const [stateSearch, setStateSearch] = useState("")
   const [mostlyAgree, setMostlyAgree] = useState<Posture | "">("")
   const [otherPartyOnline, setOtherPartyOnline] = useState<OnlineParticipation | "">("")
   const [firstName, setFirstName] = useState("")
+  const [middleName, setMiddleName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
-  const [smsConsent, setSmsConsent] = useState(false)
   const [paymentResponsibility, setPaymentResponsibility] = useState<PaymentResponsibility | "">("")
   const [resumeToken, setResumeToken] = useState("")
   const [continueUrl, setContinueUrl] = useState("")
+  const [copied, setCopied] = useState(false)
+  const [doneSaved, setDoneSaved] = useState(false)
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "loading" | "error">("idle")
   const [error, setError] = useState("")
 
   const copy = translatedCopy[language] || fallbackCopy
   const dir = rtlLanguages.has(language) ? "rtl" : "ltr"
   const recommendedPath = useMemo(() => recommendPath(mostlyAgree, otherPartyOnline), [mostlyAgree, otherPartyOnline])
+  const filteredStates = useMemo(() => {
+    const query = stateSearch.trim().toLowerCase()
+    if (!query) return usStates
+    return usStates.filter(([code, name]) => name.toLowerCase().includes(query) || code.toLowerCase().includes(query))
+  }, [stateSearch])
+  const selectedStateName = getStateName(jurisdiction)
 
   useEffect(() => {
     const token = searchParams.get("resume")
@@ -604,17 +924,20 @@ export function PreCaseStartFlow() {
       })
       .then((payload) => {
         if (cancelled || !payload.draft) return
+        const normalizedJurisdiction = normalizeJurisdiction(payload.draft.jurisdiction)
         setResumeToken(payload.resumeToken || token)
         setContinueUrl(payload.continueUrl || "")
         setLanguage(payload.draft.chosenLanguage || "en")
         setIssueType(payload.draft.issueType || "")
-        setJurisdiction(payload.draft.jurisdiction || "")
+        setJurisdiction(normalizedJurisdiction)
+        setStateSearch(normalizedJurisdiction ? getStateName(normalizedJurisdiction) : "")
         setMostlyAgree(payload.draft.mostlyAgree || "")
         setOtherPartyOnline(payload.draft.otherPartyOnline || "")
         setFirstName(payload.draft.firstName || "")
+        setMiddleName(payload.draft.middleName || "")
+        setLastName(payload.draft.lastName || "")
         setEmail(payload.draft.email || "")
-        setPhone(payload.draft.phone || "")
-        setSmsConsent(Boolean(payload.draft.smsConsent))
+        setPhone(formatUSPhone(payload.draft.phone || ""))
         setPaymentResponsibility(payload.draft.paymentResponsibility || "")
         setActiveStep(Math.min(stepCount - 1, Math.max(0, (payload.draft.lastCompletedStep || 0) + 1)))
         setStatus("saved")
@@ -637,9 +960,10 @@ export function PreCaseStartFlow() {
     mostlyAgree,
     otherPartyOnline,
     firstName,
+    middleName,
+    lastName,
     email,
-    phone,
-    smsConsent,
+    phone: normalizeUSPhone(phone),
     paymentResponsibility,
     recommendedPath,
     lastCompletedStep,
@@ -671,10 +995,10 @@ export function PreCaseStartFlow() {
   const canContinue = () => {
     if (activeStep === 0) return Boolean(language)
     if (activeStep === 1) return Boolean(issueType)
-    if (activeStep === 2) return jurisdiction.trim().length >= 2
+    if (activeStep === 2) return Boolean(jurisdiction)
     if (activeStep === 3) return Boolean(mostlyAgree)
     if (activeStep === 4) return Boolean(otherPartyOnline)
-    if (activeStep === 5) return firstName.trim().length >= 1 && isEmail(email)
+    if (activeStep === 5) return firstName.trim().length >= 1 && lastName.trim().length >= 1 && isEmail(email)
     if (activeStep === 6) return Boolean(paymentResponsibility)
     return true
   }
@@ -691,6 +1015,7 @@ export function PreCaseStartFlow() {
         await saveDraft(activeStep)
       }
       setActiveStep((current) => Math.min(stepCount - 1, current + 1))
+      setDoneSaved(false)
       if (activeStep < 5 && !resumeToken) {
         setStatus("idle")
         setError("")
@@ -699,6 +1024,23 @@ export function PreCaseStartFlow() {
       setError(caught instanceof Error ? caught.message : copy.error)
       setStatus("error")
     }
+  }
+
+  const completeForNow = async () => {
+    try {
+      await saveDraft(stepCount - 1)
+      setDoneSaved(true)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : copy.error)
+      setStatus("error")
+    }
+  }
+
+  const copyContinueLink = async () => {
+    if (!continueUrl) return
+    await navigator.clipboard.writeText(continueUrl)
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 2000)
   }
 
   const optionButton = <T extends string>(value: T, selected: boolean, label: string, onClick: (value: T) => void) => (
@@ -729,7 +1071,7 @@ export function PreCaseStartFlow() {
               <div className="text-sm font-bold text-slate-900">{BRAND_NAME}</div>
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600">
                 <ShieldCheck className="size-4 text-brand-600" aria-hidden="true" />
-                {status === "saved" ? copy.saved : copy.contact.helper.split(".")[1]?.trim() || "Progress can be saved"}
+                {status === "saved" ? copy.saved : copy.planningBadge}
               </div>
             </div>
 
@@ -761,9 +1103,7 @@ export function PreCaseStartFlow() {
                   <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{copy.language.title}</h1>
                   <p className="mt-3 text-base leading-7 text-slate-600">{copy.language.helper}</p>
                   <div className="mt-7 grid gap-3 sm:grid-cols-2">
-                    {languages.map((item) =>
-                      optionButton(item.code, language === item.code, item.label, setLanguage),
-                    )}
+                    {languages.map((item) => optionButton(item.code, language === item.code, item.label, setLanguage))}
                   </div>
                 </div>
               ) : null}
@@ -784,12 +1124,47 @@ export function PreCaseStartFlow() {
                 <div>
                   <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{copy.jurisdiction.title}</h1>
                   <p className="mt-3 text-base leading-7 text-slate-600">{copy.jurisdiction.helper}</p>
-                  <input
-                    value={jurisdiction}
-                    onChange={(event) => setJurisdiction(event.target.value)}
-                    placeholder={copy.jurisdiction.placeholder}
-                    className="mt-7 h-14 w-full rounded-lg border border-slate-200 px-4 text-lg font-semibold outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-100"
-                  />
+                  {selectedStateName ? (
+                    <div className="mt-5 rounded-lg border border-brand-100 bg-brand-50 px-4 py-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-brand-700">{copy.jurisdiction.selectedLabel}</p>
+                      <p className="mt-1 text-base font-bold text-brand-950">{selectedStateName}</p>
+                    </div>
+                  ) : null}
+                  <label className="mt-5 grid gap-2 text-sm font-semibold text-slate-700">
+                    <span className="sr-only">{copy.jurisdiction.searchPlaceholder}</span>
+                    <span className="relative">
+                      <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                      <input
+                        value={stateSearch}
+                        onChange={(event) => setStateSearch(event.target.value)}
+                        placeholder={copy.jurisdiction.searchPlaceholder}
+                        className="h-12 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-base outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-100"
+                      />
+                    </span>
+                  </label>
+                  <div className="mt-4 max-h-72 overflow-auto rounded-lg border border-slate-200">
+                    {filteredStates.length ? (
+                      filteredStates.map(([code, name]) => (
+                        <button
+                          key={code}
+                          type="button"
+                          onClick={() => {
+                            setJurisdiction(code satisfies UsStateCode)
+                            setStateSearch(name)
+                            setError("")
+                          }}
+                          className={`flex w-full items-center justify-between border-b border-slate-100 px-4 py-3 text-start text-sm font-semibold last:border-b-0 ${
+                            jurisdiction === code ? "bg-brand-50 text-brand-950" : "bg-white text-slate-800 hover:bg-slate-50"
+                          }`}
+                        >
+                          <span>{name}</span>
+                          {jurisdiction === code ? <Check className="size-4 text-brand-600" aria-hidden="true" /> : null}
+                        </button>
+                      ))
+                    ) : (
+                      <p className="px-4 py-5 text-sm font-semibold text-slate-500">{copy.jurisdiction.noResults}</p>
+                    )}
+                  </div>
                 </div>
               ) : null}
 
@@ -820,14 +1195,32 @@ export function PreCaseStartFlow() {
                   <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{copy.contact.title}</h1>
                   <p className="mt-3 text-base leading-7 text-slate-600">{copy.contact.helper}</p>
                   <div className="mt-7 grid gap-4">
-                    <label className="grid gap-2 text-sm font-semibold text-slate-700">
-                      {copy.contact.firstName}
-                      <input
-                        value={firstName}
-                        onChange={(event) => setFirstName(event.target.value)}
-                        className="h-12 rounded-lg border border-slate-200 px-4 text-base outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-100"
-                      />
-                    </label>
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <label className="grid gap-2 text-sm font-semibold text-slate-700">
+                        {copy.contact.firstName}
+                        <input
+                          value={firstName}
+                          onChange={(event) => setFirstName(event.target.value)}
+                          className="h-12 rounded-lg border border-slate-200 px-4 text-base outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-100"
+                        />
+                      </label>
+                      <label className="grid gap-2 text-sm font-semibold text-slate-700">
+                        {copy.contact.middleName} <span className="font-normal text-slate-500">({copy.optional})</span>
+                        <input
+                          value={middleName}
+                          onChange={(event) => setMiddleName(event.target.value)}
+                          className="h-12 rounded-lg border border-slate-200 px-4 text-base outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-100"
+                        />
+                      </label>
+                      <label className="grid gap-2 text-sm font-semibold text-slate-700">
+                        {copy.contact.lastName}
+                        <input
+                          value={lastName}
+                          onChange={(event) => setLastName(event.target.value)}
+                          className="h-12 rounded-lg border border-slate-200 px-4 text-base outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-100"
+                        />
+                      </label>
+                    </div>
                     <label className="grid gap-2 text-sm font-semibold text-slate-700">
                       {copy.contact.email}
                       <input
@@ -841,20 +1234,16 @@ export function PreCaseStartFlow() {
                       {copy.contact.phone} <span className="font-normal text-slate-500">({copy.optional})</span>
                       <input
                         value={phone}
-                        onChange={(event) => setPhone(event.target.value)}
+                        onChange={(event) => setPhone(formatUSPhone(event.target.value))}
                         type="tel"
+                        inputMode="tel"
+                        placeholder="(555) 123-4567"
                         className="h-12 rounded-lg border border-slate-200 px-4 text-base outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-100"
                       />
                     </label>
-                    <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
-                      <input
-                        checked={smsConsent}
-                        onChange={(event) => setSmsConsent(event.target.checked)}
-                        type="checkbox"
-                        className="mt-1 size-4"
-                      />
-                      <span>{copy.contact.smsConsent}</span>
-                    </label>
+                    <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold leading-6 text-slate-600">
+                      {copy.contact.reassurance}
+                    </p>
                   </div>
                 </div>
               ) : null}
@@ -878,7 +1267,7 @@ export function PreCaseStartFlow() {
                     <p className="text-2xl font-bold text-brand-950">
                       {recommendedPath === "guided_agreement_builder" ? copy.recommended.builder : copy.recommended.mediation}
                     </p>
-                    <p className="mt-3 text-sm font-semibold text-brand-800">{copy.recommended.fee}</p>
+                    <p className="mt-3 text-sm font-semibold text-brand-800">{copy.recommended.pricing}</p>
                   </div>
                   <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
                     <h2 className="text-base font-bold text-slate-900">{copy.recommended.nextTitle}</h2>
@@ -892,10 +1281,20 @@ export function PreCaseStartFlow() {
                     </ul>
                   </div>
                   {continueUrl ? (
-                    <div className="mt-5 rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{copy.recommended.continueLink}</p>
-                      <p className="mt-2 break-all text-sm font-semibold text-slate-700">{continueUrl}</p>
+                    <div className="mt-5 flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-4">
+                      <button
+                        type="button"
+                        onClick={copyContinueLink}
+                        className="focus-ring inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        <Clipboard className="size-4" aria-hidden="true" />
+                        {copied ? copy.recommended.copied : copy.recommended.copyContinueLink}
+                      </button>
+                      <p className="text-xs font-semibold leading-5 text-slate-500">{copy.recommended.testerNote}</p>
                     </div>
+                  ) : null}
+                  {doneSaved ? (
+                    <p className="mt-5 rounded-lg bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">{copy.saved}</p>
                   ) : null}
                 </div>
               ) : null}
@@ -903,39 +1302,53 @@ export function PreCaseStartFlow() {
               {error ? <p className="mt-5 rounded-lg bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</p> : null}
 
               <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveStep((current) => Math.max(0, current - 1))
-                    setError("")
-                  }}
-                  disabled={activeStep === 0 || status === "saving"}
-                  className="focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-slate-200 px-5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <ArrowLeft className="size-4" aria-hidden="true" />
-                  {copy.back}
-                </button>
-
                 {activeStep < stepCount - 1 ? (
-                  <button
-                    type="button"
-                    onClick={goNext}
-                    disabled={status === "saving" || status === "loading"}
-                    className="focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-brand-600 px-6 text-sm font-bold text-white shadow-soft transition hover:bg-brand-700 disabled:cursor-wait disabled:opacity-70"
-                  >
-                    {status === "saving" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-                    {activeStep === 5 ? copy.save : copy.continue}
-                    <ArrowRight className="size-4" aria-hidden="true" />
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveStep((current) => Math.max(0, current - 1))
+                        setError("")
+                      }}
+                      disabled={activeStep === 0 || status === "saving"}
+                      className="focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-slate-200 px-5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ArrowLeft className="size-4" aria-hidden="true" />
+                      {copy.back}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={goNext}
+                      disabled={status === "saving" || status === "loading"}
+                      className="focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-brand-600 px-6 text-sm font-bold text-white shadow-soft transition hover:bg-brand-700 disabled:cursor-wait disabled:opacity-70"
+                    >
+                      {status === "saving" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+                      {activeStep === 5 ? copy.save : copy.continue}
+                      <ArrowRight className="size-4" aria-hidden="true" />
+                    </button>
+                  </>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => setActiveStep(0)}
-                    className="focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-brand-600 px-6 text-sm font-bold text-white shadow-soft transition hover:bg-brand-700"
-                  >
-                    <RotateCcw className="size-4" aria-hidden="true" />
-                    {copy.back}
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveStep(0)
+                        setError("")
+                      }}
+                      className="focus-ring inline-flex h-12 items-center justify-center rounded-lg border border-slate-200 px-5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      {copy.recommended.edit}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={completeForNow}
+                      disabled={status === "saving"}
+                      className="focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-brand-600 px-6 text-sm font-bold text-white shadow-soft transition hover:bg-brand-700 disabled:cursor-wait disabled:opacity-70"
+                    >
+                      {status === "saving" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+                      {copy.recommended.done}
+                    </button>
+                  </>
                 )}
               </div>
             </div>
