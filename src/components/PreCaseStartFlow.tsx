@@ -94,6 +94,14 @@ type FlowCopy = {
     builder: string
     mediation: string
     pricing: string
+    pricingTitle: string
+    activationFeeToday: string
+    estimatedTotal: string
+    builderEstimatedTotal: string
+    mediationEstimatedTotal: string
+    credited: string
+    remainingResponsibility: string
+    remainingReview: string
     nextTitle: string
     next: string[]
     activate: string
@@ -250,13 +258,21 @@ const fallbackCopy: FlowCopy = {
     builder: "Guided Agreement Builder",
     mediation: "Guided Online Mediation",
     pricing: "The opener pays the activation fee now. Remaining-balance responsibility stays as selected.",
+    pricingTitle: "Price before payment",
+    activationFeeToday: "Activation fee today: $99",
+    estimatedTotal: "Estimated total:",
+    builderEstimatedTotal: "$399",
+    mediationEstimatedTotal: "$900-$1,800",
+    credited: "The activation fee is credited toward the total.",
+    remainingResponsibility: "Remaining balance:",
+    remainingReview: "Any remaining balance is reviewed and approved before draft release.",
     nextTitle: "What happens next",
     next: [
       "Your answers are saved.",
       "Checkout opens your case and keeps this same process moving.",
       "We email your direct continue link after payment.",
     ],
-    activate: "Pay activation fee",
+    activate: "Continue to payment",
     activating: "Opening checkout...",
     done: "Done for now",
     edit: "Edit answers",
@@ -334,9 +350,17 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       builder: "Constructor guiado de acuerdos",
       mediation: "Mediación guiada en línea",
       pricing: "La persona que inicia paga la tarifa de activación ahora. La responsabilidad del saldo restante queda como se eligió.",
+      pricingTitle: "Precio antes del pago",
+      activationFeeToday: "Tarifa de activación hoy: $99",
+      estimatedTotal: "Total estimado:",
+      builderEstimatedTotal: "$399",
+      mediationEstimatedTotal: "$900-$1,800",
+      credited: "La tarifa de activación se acredita al total.",
+      remainingResponsibility: "Saldo restante:",
+      remainingReview: "Cualquier saldo restante se revisa y aprueba antes de liberar el borrador.",
       nextTitle: "Qué pasa después",
       next: ["Tus respuestas están guardadas.", "El pago abre tu caso y mantiene este mismo proceso.", "Te enviaremos por email tu enlace directo para continuar."],
-      activate: "Pagar tarifa de activación",
+      activate: "Continuar al pago",
       activating: "Abriendo pago...",
       done: "Terminar por ahora",
       edit: "Editar respuestas",
@@ -411,9 +435,17 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       builder: "Construtor guiado de acordo",
       mediation: "Mediação online guiada",
       pricing: "Quem abre o caso paga a taxa de ativação agora. A responsabilidade pelo saldo restante fica como selecionada.",
+      pricingTitle: "Preço antes do pagamento",
+      activationFeeToday: "Taxa de ativação hoje: $99",
+      estimatedTotal: "Total estimado:",
+      builderEstimatedTotal: "$399",
+      mediationEstimatedTotal: "$900-$1,800",
+      credited: "A taxa de ativação é creditada ao total.",
+      remainingResponsibility: "Saldo restante:",
+      remainingReview: "Qualquer saldo restante é revisado e aprovado antes da liberação do rascunho.",
       nextTitle: "O que acontece a seguir",
       next: ["Suas respostas estão salvas.", "O pagamento abre seu caso e mantém este mesmo processo.", "Enviaremos por email seu link direto para continuar."],
-      activate: "Pagar taxa de ativação",
+      activate: "Continuar para pagamento",
       activating: "Abrindo pagamento...",
       done: "Concluir por agora",
       edit: "Editar respostas",
@@ -488,9 +520,17 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       builder: "Créateur d’accord guidé",
       mediation: "Médiation en ligne guidée",
       pricing: "La personne qui ouvre le dossier paie les frais d’activation maintenant. La responsabilité du solde reste celle choisie.",
+      pricingTitle: "Prix avant paiement",
+      activationFeeToday: "Frais d’activation aujourd’hui : 99 $",
+      estimatedTotal: "Total estimé :",
+      builderEstimatedTotal: "399 $",
+      mediationEstimatedTotal: "900 $-1 800 $",
+      credited: "Les frais d’activation sont crédités sur le total.",
+      remainingResponsibility: "Solde restant :",
+      remainingReview: "Tout solde restant est examiné et approuvé avant la libération du brouillon.",
       nextTitle: "Ce qui se passe ensuite",
       next: ["Vos réponses sont enregistrées.", "Le paiement ouvre votre dossier et garde le même parcours.", "Nous vous envoyons par email votre lien direct pour continuer."],
-      activate: "Payer les frais d’activation",
+      activate: "Continuer vers le paiement",
       activating: "Ouverture du paiement...",
       done: "Terminer pour l’instant",
       edit: "Modifier les réponses",
@@ -565,9 +605,17 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       builder: "منشئ اتفاق موجه",
       mediation: "وساطة موجهة عبر الإنترنت",
       pricing: "يدفع صاحب الطلب رسوم التفعيل الآن. تبقى مسؤولية الرصيد المتبقي كما تم اختيارها.",
+      pricingTitle: "السعر قبل الدفع",
+      activationFeeToday: "رسوم التفعيل اليوم: $99",
+      estimatedTotal: "الإجمالي التقديري:",
+      builderEstimatedTotal: "$399",
+      mediationEstimatedTotal: "$900-$1,800",
+      credited: "تُخصم رسوم التفعيل من الإجمالي.",
+      remainingResponsibility: "الرصيد المتبقي:",
+      remainingReview: "تتم مراجعة أي رصيد متبقٍ والموافقة عليه قبل إصدار المسودة.",
       nextTitle: "ماذا يحدث بعد ذلك",
       next: ["تم حفظ إجاباتك.", "يفتح الدفع قضيتك ويحافظ على نفس المسار.", "سنرسل رابط المتابعة المباشر إلى بريدك الإلكتروني."],
-      activate: "دفع رسوم التفعيل",
+      activate: "المتابعة إلى الدفع",
       activating: "جارٍ فتح الدفع...",
       done: "انتهيت الآن",
       edit: "تعديل الإجابات",
@@ -642,9 +690,17 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       builder: "سازنده توافق راهنمایی‌شده",
       mediation: "میانجی‌گری آنلاین راهنمایی‌شده",
       pricing: "بازکننده پرونده اکنون هزینه فعال‌سازی را پرداخت می‌کند. مسئولیت باقی‌مانده همان انتخاب قبلی می‌ماند.",
+      pricingTitle: "قیمت پیش از پرداخت",
+      activationFeeToday: "هزینه فعال‌سازی امروز: $99",
+      estimatedTotal: "مجموع تخمینی:",
+      builderEstimatedTotal: "$399",
+      mediationEstimatedTotal: "$900-$1,800",
+      credited: "هزینه فعال‌سازی از مجموع کسر می‌شود.",
+      remainingResponsibility: "باقی‌مانده مبلغ:",
+      remainingReview: "هر مبلغ باقی‌مانده پیش از انتشار پیش‌نویس بررسی و تأیید می‌شود.",
       nextTitle: "بعد چه می‌شود",
       next: ["پاسخ‌های شما ذخیره شده است.", "پرداخت پرونده شما را باز می‌کند و همین روند را ادامه می‌دهد.", "پیوند مستقیم ادامه را برایتان ایمیل می‌کنیم."],
-      activate: "پرداخت هزینه فعال‌سازی",
+      activate: "ادامه به پرداخت",
       activating: "در حال باز کردن پرداخت...",
       done: "فعلاً تمام",
       edit: "ویرایش پاسخ‌ها",
@@ -719,9 +775,17 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       builder: "Пошаговый конструктор соглашения",
       mediation: "Пошаговая онлайн-медиация",
       pricing: "Инициатор оплачивает активационный сбор сейчас. Ответственность за остаток остается выбранной.",
+      pricingTitle: "Цена перед оплатой",
+      activationFeeToday: "Активационный сбор сегодня: $99",
+      estimatedTotal: "Ориентировочная сумма:",
+      builderEstimatedTotal: "$399",
+      mediationEstimatedTotal: "$900-$1,800",
+      credited: "Активационный сбор засчитывается в общую сумму.",
+      remainingResponsibility: "Оставшийся баланс:",
+      remainingReview: "Любой оставшийся баланс проверяется и утверждается перед выпуском проекта.",
       nextTitle: "Что дальше",
       next: ["Ваши ответы сохранены.", "Оплата откроет ваше дело и продолжит тот же процесс.", "Мы отправим прямую ссылку для продолжения на email."],
-      activate: "Оплатить активацию",
+      activate: "Перейти к оплате",
       activating: "Открываем оплату...",
       done: "Готово на сейчас",
       edit: "Изменить ответы",
@@ -796,9 +860,17 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       builder: "引导式协议生成器",
       mediation: "引导式在线调解",
       pricing: "开案人现在支付激活费。剩余余额责任保持您刚才的选择。",
+      pricingTitle: "付款前价格",
+      activationFeeToday: "今日激活费：$99",
+      estimatedTotal: "预计总额：",
+      builderEstimatedTotal: "$399",
+      mediationEstimatedTotal: "$900-$1,800",
+      credited: "激活费会计入总额。",
+      remainingResponsibility: "剩余余额：",
+      remainingReview: "任何剩余余额都会在草稿发布前供您查看并批准。",
       nextTitle: "接下来会发生什么",
       next: ["您的答案已保存。", "付款会打开您的案件，并继续同一个流程。", "我们会通过电子邮件发送直接继续链接。"],
-      activate: "支付激活费",
+      activate: "继续付款",
       activating: "正在打开付款...",
       done: "暂时完成",
       edit: "编辑答案",
@@ -873,9 +945,17 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       builder: "मार्गदर्शित समझौता निर्माता",
       mediation: "मार्गदर्शित ऑनलाइन मध्यस्थता",
       pricing: "केस खोलने वाला व्यक्ति अभी activation fee चुकाता है. बाकी राशि की जिम्मेदारी आपके चयन जैसी ही रहती है.",
+      pricingTitle: "भुगतान से पहले मूल्य",
+      activationFeeToday: "आज की activation fee: $99",
+      estimatedTotal: "अनुमानित कुल:",
+      builderEstimatedTotal: "$399",
+      mediationEstimatedTotal: "$900-$1,800",
+      credited: "Activation fee कुल राशि में credit होती है.",
+      remainingResponsibility: "बाकी राशि:",
+      remainingReview: "Draft release से पहले बाकी राशि की समीक्षा और स्वीकृति की जाती है.",
       nextTitle: "आगे क्या होगा",
       next: ["आपके उत्तर सहेजे गए हैं.", "भुगतान आपका केस खोलता है और इसी प्रक्रिया को जारी रखता है.", "हम आपका सीधा जारी रखने वाला लिंक email करेंगे."],
-      activate: "Activation fee चुकाएँ",
+      activate: "भुगतान पर जाएँ",
       activating: "भुगतान खुल रहा है...",
       done: "अभी के लिए पूरा",
       edit: "उत्तर संपादित करें",
@@ -939,6 +1019,14 @@ export function PreCaseStartFlow() {
     return usStates.filter(([code, name]) => name.toLowerCase().includes(query) || code.toLowerCase().includes(query))
   }, [stateSearch])
   const selectedStateName = getStateName(jurisdiction)
+  const recommendedEstimatedTotal =
+    recommendedPath === "guided_agreement_builder"
+      ? copy.recommended.builderEstimatedTotal
+      : copy.recommended.mediationEstimatedTotal
+  const remainingResponsibilityLabel =
+    paymentResponsibility && copy.payment.options[paymentResponsibility]
+      ? copy.payment.options[paymentResponsibility]
+      : ""
 
   useEffect(() => {
     const token = searchParams.get("resume")
@@ -1340,6 +1428,26 @@ export function PreCaseStartFlow() {
                       {recommendedPath === "guided_agreement_builder" ? copy.recommended.builder : copy.recommended.mediation}
                     </p>
                     <p className="mt-3 text-sm font-semibold text-brand-800">{copy.recommended.pricing}</p>
+                    <div className="mt-5 rounded-lg border border-brand-100 bg-white p-4">
+                      <h2 className="text-sm font-bold text-slate-900">{copy.recommended.pricingTitle}</h2>
+                      <dl className="mt-3 grid gap-3 text-sm leading-6">
+                        <div className="flex items-start justify-between gap-4">
+                          <dt className="font-semibold text-slate-600">{copy.recommended.activationFeeToday}</dt>
+                        </div>
+                        <div className="flex items-start justify-between gap-4">
+                          <dt className="font-semibold text-slate-600">{copy.recommended.estimatedTotal}</dt>
+                          <dd className="text-right font-bold text-slate-950">{recommendedEstimatedTotal}</dd>
+                        </div>
+                        <div className="flex items-start justify-between gap-4">
+                          <dt className="font-semibold text-slate-600">{copy.recommended.remainingResponsibility}</dt>
+                          <dd className="max-w-[14rem] text-right font-bold text-slate-950">{remainingResponsibilityLabel}</dd>
+                        </div>
+                      </dl>
+                      <div className="mt-4 space-y-2 text-sm font-semibold leading-6 text-slate-600">
+                        <p>{copy.recommended.credited}</p>
+                        <p>{copy.recommended.remainingReview}</p>
+                      </div>
+                    </div>
                   </div>
                   <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
                     <h2 className="text-base font-bold text-slate-900">{copy.recommended.nextTitle}</h2>
