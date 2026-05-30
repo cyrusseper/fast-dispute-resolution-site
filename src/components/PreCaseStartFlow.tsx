@@ -96,6 +96,8 @@ type FlowCopy = {
     pricing: string
     nextTitle: string
     next: string[]
+    activate: string
+    activating: string
     done: string
     edit: string
     copyContinueLink: string
@@ -247,13 +249,15 @@ const fallbackCopy: FlowCopy = {
     title: "Recommended path",
     builder: "Guided Agreement Builder",
     mediation: "Guided Online Mediation",
-    pricing: "Exact pricing will be shown before payment.",
+    pricing: "The opener pays the activation fee now. Remaining-balance responsibility stays as selected.",
     nextTitle: "What happens next",
     next: [
       "Your answers are saved.",
-      "You can return with your continue link.",
-      "Secure setup and payment will come later.",
+      "Checkout opens your case and keeps this same process moving.",
+      "We email your direct continue link after payment.",
     ],
+    activate: "Pay activation fee",
+    activating: "Opening checkout...",
     done: "Done for now",
     edit: "Edit answers",
     copyContinueLink: "Copy continue link",
@@ -329,9 +333,11 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       title: "Ruta recomendada",
       builder: "Constructor guiado de acuerdos",
       mediation: "Mediación guiada en línea",
-      pricing: "El precio exacto se mostrará antes del pago.",
+      pricing: "La persona que inicia paga la tarifa de activación ahora. La responsabilidad del saldo restante queda como se eligió.",
       nextTitle: "Qué pasa después",
-      next: ["Tus respuestas están guardadas.", "Puedes volver con tu enlace para continuar.", "La configuración segura y el pago vendrán después."],
+      next: ["Tus respuestas están guardadas.", "El pago abre tu caso y mantiene este mismo proceso.", "Te enviaremos por email tu enlace directo para continuar."],
+      activate: "Pagar tarifa de activación",
+      activating: "Abriendo pago...",
       done: "Terminar por ahora",
       edit: "Editar respuestas",
       copyContinueLink: "Copiar enlace para continuar",
@@ -404,9 +410,11 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       title: "Caminho recomendado",
       builder: "Construtor guiado de acordo",
       mediation: "Mediação online guiada",
-      pricing: "O preço exato será mostrado antes do pagamento.",
+      pricing: "Quem abre o caso paga a taxa de ativação agora. A responsabilidade pelo saldo restante fica como selecionada.",
       nextTitle: "O que acontece a seguir",
-      next: ["Suas respostas estão salvas.", "Você pode voltar com seu link de continuação.", "A configuração segura e o pagamento virão depois."],
+      next: ["Suas respostas estão salvas.", "O pagamento abre seu caso e mantém este mesmo processo.", "Enviaremos por email seu link direto para continuar."],
+      activate: "Pagar taxa de ativação",
+      activating: "Abrindo pagamento...",
       done: "Concluir por agora",
       edit: "Editar respostas",
       copyContinueLink: "Copiar link de continuação",
@@ -479,9 +487,11 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       title: "Parcours recommandé",
       builder: "Créateur d’accord guidé",
       mediation: "Médiation en ligne guidée",
-      pricing: "Le prix exact sera indiqué avant le paiement.",
+      pricing: "La personne qui ouvre le dossier paie les frais d’activation maintenant. La responsabilité du solde reste celle choisie.",
       nextTitle: "Ce qui se passe ensuite",
-      next: ["Vos réponses sont enregistrées.", "Vous pouvez revenir avec votre lien de reprise.", "La configuration sécurisée et le paiement viendront plus tard."],
+      next: ["Vos réponses sont enregistrées.", "Le paiement ouvre votre dossier et garde le même parcours.", "Nous vous envoyons par email votre lien direct pour continuer."],
+      activate: "Payer les frais d’activation",
+      activating: "Ouverture du paiement...",
       done: "Terminer pour l’instant",
       edit: "Modifier les réponses",
       copyContinueLink: "Copier le lien de reprise",
@@ -554,9 +564,11 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       title: "المسار الموصى به",
       builder: "منشئ اتفاق موجه",
       mediation: "وساطة موجهة عبر الإنترنت",
-      pricing: "سيظهر السعر الدقيق قبل الدفع.",
+      pricing: "يدفع صاحب الطلب رسوم التفعيل الآن. تبقى مسؤولية الرصيد المتبقي كما تم اختيارها.",
       nextTitle: "ماذا يحدث بعد ذلك",
-      next: ["تم حفظ إجاباتك.", "يمكنك العودة باستخدام رابط المتابعة.", "سيأتي الإعداد الآمن والدفع لاحقًا."],
+      next: ["تم حفظ إجاباتك.", "يفتح الدفع قضيتك ويحافظ على نفس المسار.", "سنرسل رابط المتابعة المباشر إلى بريدك الإلكتروني."],
+      activate: "دفع رسوم التفعيل",
+      activating: "جارٍ فتح الدفع...",
       done: "انتهيت الآن",
       edit: "تعديل الإجابات",
       copyContinueLink: "نسخ رابط المتابعة",
@@ -629,9 +641,11 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       title: "مسیر پیشنهادی",
       builder: "سازنده توافق راهنمایی‌شده",
       mediation: "میانجی‌گری آنلاین راهنمایی‌شده",
-      pricing: "قیمت دقیق پیش از پرداخت نمایش داده می‌شود.",
+      pricing: "بازکننده پرونده اکنون هزینه فعال‌سازی را پرداخت می‌کند. مسئولیت باقی‌مانده همان انتخاب قبلی می‌ماند.",
       nextTitle: "بعد چه می‌شود",
-      next: ["پاسخ‌های شما ذخیره شده است.", "می‌توانید با پیوند ادامه برگردید.", "تنظیم امن و پرداخت بعداً انجام می‌شود."],
+      next: ["پاسخ‌های شما ذخیره شده است.", "پرداخت پرونده شما را باز می‌کند و همین روند را ادامه می‌دهد.", "پیوند مستقیم ادامه را برایتان ایمیل می‌کنیم."],
+      activate: "پرداخت هزینه فعال‌سازی",
+      activating: "در حال باز کردن پرداخت...",
       done: "فعلاً تمام",
       edit: "ویرایش پاسخ‌ها",
       copyContinueLink: "کپی پیوند ادامه",
@@ -704,9 +718,11 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       title: "Рекомендуемый путь",
       builder: "Пошаговый конструктор соглашения",
       mediation: "Пошаговая онлайн-медиация",
-      pricing: "Точная цена будет показана перед оплатой.",
+      pricing: "Инициатор оплачивает активационный сбор сейчас. Ответственность за остаток остается выбранной.",
       nextTitle: "Что дальше",
-      next: ["Ваши ответы сохранены.", "Вы можете вернуться по ссылке продолжения.", "Безопасная настройка и оплата будут позже."],
+      next: ["Ваши ответы сохранены.", "Оплата откроет ваше дело и продолжит тот же процесс.", "Мы отправим прямую ссылку для продолжения на email."],
+      activate: "Оплатить активацию",
+      activating: "Открываем оплату...",
       done: "Готово на сейчас",
       edit: "Изменить ответы",
       copyContinueLink: "Скопировать ссылку продолжения",
@@ -779,9 +795,11 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       title: "推荐路径",
       builder: "引导式协议生成器",
       mediation: "引导式在线调解",
-      pricing: "确切价格会在付款前显示。",
+      pricing: "开案人现在支付激活费。剩余余额责任保持您刚才的选择。",
       nextTitle: "接下来会发生什么",
-      next: ["您的答案已保存。", "您可以用继续链接返回。", "安全设置和付款将在稍后进行。"],
+      next: ["您的答案已保存。", "付款会打开您的案件，并继续同一个流程。", "我们会通过电子邮件发送直接继续链接。"],
+      activate: "支付激活费",
+      activating: "正在打开付款...",
       done: "暂时完成",
       edit: "编辑答案",
       copyContinueLink: "复制继续链接",
@@ -854,9 +872,11 @@ const translatedCopy: Partial<Record<LanguageCode, FlowCopy>> = {
       title: "अनुशंसित रास्ता",
       builder: "मार्गदर्शित समझौता निर्माता",
       mediation: "मार्गदर्शित ऑनलाइन मध्यस्थता",
-      pricing: "सटीक कीमत भुगतान से पहले दिखाई जाएगी.",
+      pricing: "केस खोलने वाला व्यक्ति अभी activation fee चुकाता है. बाकी राशि की जिम्मेदारी आपके चयन जैसी ही रहती है.",
       nextTitle: "आगे क्या होगा",
-      next: ["आपके उत्तर सहेजे गए हैं.", "आप अपने जारी रखने वाले लिंक से वापस आ सकते हैं.", "सुरक्षित सेटअप और भुगतान बाद में आएंगे."],
+      next: ["आपके उत्तर सहेजे गए हैं.", "भुगतान आपका केस खोलता है और इसी प्रक्रिया को जारी रखता है.", "हम आपका सीधा जारी रखने वाला लिंक email करेंगे."],
+      activate: "Activation fee चुकाएँ",
+      activating: "भुगतान खुल रहा है...",
       done: "अभी के लिए पूरा",
       edit: "उत्तर संपादित करें",
       copyContinueLink: "जारी रखने का लिंक कॉपी करें",
@@ -906,7 +926,7 @@ export function PreCaseStartFlow() {
   const [resumeToken, setResumeToken] = useState("")
   const [continueUrl, setContinueUrl] = useState("")
   const [copied, setCopied] = useState(false)
-  const [doneSaved, setDoneSaved] = useState(false)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "loading" | "error">("idle")
   const [error, setError] = useState("")
 
@@ -997,9 +1017,12 @@ export function PreCaseStartFlow() {
       throw new Error(payload.error || copy.error)
     }
 
-    setResumeToken(payload.resumeToken || resumeToken)
-    setContinueUrl(payload.continueUrl || continueUrl)
+    const nextResumeToken = payload.resumeToken || resumeToken
+    const nextContinueUrl = payload.continueUrl || continueUrl
+    setResumeToken(nextResumeToken)
+    setContinueUrl(nextContinueUrl)
     setStatus("saved")
+    return { resumeToken: nextResumeToken, continueUrl: nextContinueUrl }
   }
 
   const canContinue = () => {
@@ -1025,7 +1048,6 @@ export function PreCaseStartFlow() {
         await saveDraft(activeStep)
       }
       setActiveStep((current) => Math.min(stepCount - 1, current + 1))
-      setDoneSaved(false)
       if (activeStep < 5 && !resumeToken) {
         setStatus("idle")
         setError("")
@@ -1036,11 +1058,31 @@ export function PreCaseStartFlow() {
     }
   }
 
-  const completeForNow = async () => {
+  const startActivationCheckout = async () => {
     try {
-      await saveDraft(stepCount - 1)
-      setDoneSaved(true)
+      setCheckoutLoading(true)
+      setError("")
+      const saved = await saveDraft(stepCount - 1)
+      const response = await fetch("/api/pre-case-drafts/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ resumeToken: saved.resumeToken }),
+      })
+      const payload = (await response.json()) as {
+        checkoutUrl?: string
+        continueUrl?: string
+        error?: string
+      }
+      if (!response.ok) {
+        throw new Error(payload.error || copy.error)
+      }
+      const nextUrl = payload.checkoutUrl || payload.continueUrl
+      if (!nextUrl) {
+        throw new Error("Checkout is not available yet.")
+      }
+      window.location.assign(nextUrl)
     } catch (caught) {
+      setCheckoutLoading(false)
       setError(caught instanceof Error ? caught.message : copy.error)
       setStatus("error")
     }
@@ -1323,9 +1365,6 @@ export function PreCaseStartFlow() {
                       <p className="text-xs font-semibold leading-5 text-slate-500">{copy.recommended.testerNote}</p>
                     </div>
                   ) : null}
-                  {doneSaved ? (
-                    <p className="mt-5 rounded-lg bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">{copy.saved}</p>
-                  ) : null}
                 </div>
               ) : null}
 
@@ -1371,12 +1410,13 @@ export function PreCaseStartFlow() {
                     </button>
                     <button
                       type="button"
-                      onClick={completeForNow}
-                      disabled={status === "saving"}
+                      onClick={startActivationCheckout}
+                      disabled={checkoutLoading || status === "saving"}
                       className="focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-brand-600 px-6 text-sm font-bold text-white shadow-soft transition hover:bg-brand-700 disabled:cursor-wait disabled:opacity-70"
                     >
-                      {status === "saving" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-                      {copy.recommended.done}
+                      {checkoutLoading || status === "saving" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+                      {checkoutLoading ? copy.recommended.activating : copy.recommended.activate}
+                      <ArrowRight className="size-4" aria-hidden="true" />
                     </button>
                   </>
                 )}
